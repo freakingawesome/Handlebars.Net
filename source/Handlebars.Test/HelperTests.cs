@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections;
+using System.Linq;
 
 namespace HandlebarsDotNet.Test
 {
@@ -141,6 +142,39 @@ namespace HandlebarsDotNet.Test
 
             Assert.AreEqual(expectedIsSame, outputIsSame);
             Assert.AreEqual(expectedIsDifferent, outputIsDifferent);
+        }
+
+        [Test]
+        public void HelperWithHashArguments()
+        {
+            Handlebars.RegisterHelper("myHelper", (writer, context, args) => {
+                var count = 0;
+                foreach(var arg in args)
+                {
+					if (arg is IDictionary)
+					{
+						writer.Write("\nHash at index {0}:", ++count);
+						var hash = (IDictionary)arg;
+
+						foreach (var key in hash.Keys.Cast<string>().OrderBy(x => x))
+						{
+							writer.Write("\n - {0}: {1}", key, hash[key]);
+						}
+					}
+					else
+						writer.Write("\nThing {0}: {1}", ++count, arg);
+                }
+            });
+
+            var source = "Here are some things: {{myHelper 'foo' 'bar' hash1=42 hash2='foo bar'}}";
+
+            var template = Handlebars.Compile(source);
+
+            var output = template(new { });
+
+            var expected = "Here are some things: \nThing 1: foo\nThing 2: bar\nHash at index 3:\n - hash1: 42\n - hash2: foobar";
+
+            Assert.AreEqual(expected, output);
         }
     }
 }
